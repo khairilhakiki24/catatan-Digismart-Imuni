@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digismart Imuni</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- SweetAlert2 CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@10.15.5/dist/sweetalert2.min.css">
+  <style>
+    body {
+      background-color: #FFAFAF;
+    }
+    .container {
+      background-color: #FFFFFF;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .card {
+      background-color: #FFF;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .notes-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      grid-gap: 20px;
+    }
+    .note-card .card-body {
+      padding: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-md mt-5">
+    <h2 class="text-center mb-4" style="color: white;">Catatan Digismart Imuni</h2>
+
+    <div class="row">
+      <div class="col-md-6">
+        <!-- Input untuk menambahkan catatan -->
+        <div class="card">
+          <div class="card-body">
+            <textarea id="newNote" class="form-control mb-3" placeholder="Tambahkan pengalaman atau pertanyaan tentang imunisasi..."></textarea>
+            <input type="datetime-local" id="noteDateTime" class="form-control mb-3" />
+            <label for="noteCategory">Kategori:</label>
+            <select id="noteCategory" class="form-control mb-3">
+              <option value="pertanyaan">Pertanyaan</option>
+              <option value="pengalaman">Pengalaman</option>
+              <option value="alasan">Alasan Imunisasi</option>
+            </select>
+            <button class="btn btn-primary btn-block" onclick="addNote()">Tambah Catatan</button>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="btn btn-success btn-block" onclick="exportNotes()">Ekspor Catatan</button>
+          <input type="file" id="importFile" accept=".json" onchange="importNotes(event)" class="form-control mt-3">
+       
+</br>	   </div>
+      </div>
+	  
+	  
+      <div class="col-md-6">
+	  <div class="row mb-3">
+      <div class="col-md-6">
+        <!-- Pencarian berdasarkan teks -->
+        <div class="form-group">
+          <input type="text" id="searchText" class="form-control" placeholder="Cari berdasarkan teks...">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <!-- Pencarian berdasarkan kategori -->
+        <div class="form-group">
+          <select id="searchCategory" class="form-control">
+            <option value="">Semua Kategori</option>
+            <option value="pertanyaan">Pertanyaan</option>
+            <option value="pengalaman">Pengalaman</option>
+            <option value="alasan">Alasan Imunisasi</option>
+          </select>
+        </div>
+      </div>
+    </div>
+        <div class="notes-container" id="notesContainer">
+          <!-- Container untuk menampilkan catatan -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript dan jQuery (wajib diletakkan sebelum penutup </body>) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10.15.5/dist/sweetalert2.all.min.js"></script>
+  <script>
+    // Fungsi untuk menambahkan catatan
+    function addNote() {
+      const newNoteText = document.getElementById("newNote").value;
+      const newNoteDateTime = document.getElementById("noteDateTime").value;
+      const noteCategory = document.getElementById("noteCategory").value;
+
+      if (newNoteText.trim() !== '' && newNoteDateTime.trim() !== '') {
+        const formattedDateTime = formatDate(new Date(newNoteDateTime));
+        const noteObj = { text: newNoteText, datetime: formattedDateTime, category: noteCategory };
+        notes.push(noteObj);
+        saveNotesToStorage();
+        updateNotesUI();
+        document.getElementById("newNote").value = '';
+        document.getElementById("noteDateTime").value = '';
+        document.getElementById("noteCategory").value = 'pertanyaan'; // Setel kategori default jika diperlukan
+      }
+    }
+
+    // Fungsi untuk memformat tanggal sesuai dengan yang diinginkan
+    function formatDate(date) {
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+      return date.toLocaleDateString('id-ID', options).replace(",","").replace(/ /g,"-").replace("T", " ");
+    }
+
+    // Fungsi untuk memperbarui tampilan catatan
+    function updateNotesUI() {
+      const searchText = document.getElementById("searchText").value.toLowerCase();
+      const searchCategory = document.getElementById("searchCategory").value.toLowerCase();
+      const notesContainer = document.getElementById("notesContainer");
+      notesContainer.innerHTML = '';
+
+      for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+        const noteText = note.text.toLowerCase();
+        const noteCategory = note.category.toLowerCase();
+
+        // Mengecek apakah catatan cocok dengan pencarian teks dan kategori
+        if ((searchText === '' || noteText.includes(searchText)) && (searchCategory === '' || noteCategory === searchCategory)) {
+          const noteCard = document.createElement("div");
+          noteCard.className = "note-card card";
+          noteCard.innerHTML = `
+            <div class="card-body">
+              <p class="card-text">${note.text}</p>
+              <p class="card-text">Waktu dan Tanggal: ${note.datetime}</p>
+              <p class="card-text">Kategori: ${note.category}</p>
+              <button class="btn btn-danger btn-sm" onclick="deleteNote(${i})">Hapus</button>
+            </div>
+          `;
+          notesContainer.appendChild(noteCard);
+        }
+      }
+    }
+
+    // Fungsi untuk menghapus catatan
+    function deleteNote(index) {
+      notes.splice(index, 1);
+      saveNotesToStorage();
+      updateNotesUI();
+    }
+
+    // Fungsi untuk menyimpan catatan ke local storage
+    function saveNotesToStorage() {
+      localStorage.setItem("notes", JSON.stringify(notes));
+    }
+
+    // Fungsi untuk memuat catatan dari local storage saat halaman dimuat
+    function loadNotesFromStorage() {
+      const storedNotes = localStorage.getItem("notes");
+      if (storedNotes) {
+        notes = JSON.parse(storedNotes);
+      }
+    }
+
+    // Fungsi untuk meng-ekspor catatan
+    function exportNotes() {
+      const data = JSON.stringify(notes);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'catatan.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 0);
+    }
+
+    // Fungsi untuk meng-import catatan
+    function importNotes(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const contents = e.target.result;
+        const importedNotes = JSON.parse(contents);
+        notes = importedNotes;
+        updateNotesUI();
+        saveNotesToStorage();
+      };
+      reader.readAsText(file);
+    }
+
+    // Panggil fungsi updateNotesUI dan loadNotesFromStorage saat halaman pertama kali dimuat
+    let notes = [];
+    loadNotesFromStorage();
+    updateNotesUI();
+
+    // Memanggil fungsi updateNotesUI setiap kali input pencarian berubah
+    document.getElementById("searchText").addEventListener("input", updateNotesUI);
+    document.getElementById("searchCategory").addEventListener("change", updateNotesUI);
+  </script>
+</body>
+</html>
